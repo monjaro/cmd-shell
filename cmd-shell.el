@@ -76,6 +76,23 @@
             (t (newline)))
     (newline)))
 
+
+(defun cmd-shell-goto-tag ()
+  (interactive)
+  (let ((tags nil)
+        (tag-lines (make-hash-table :test 'equal)))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "#\\(\\w+\\)" nil t)
+        (let ((tag (match-string 1)))
+          (puthash tag (line-beginning-position) tag-lines)
+          (add-to-list 'tags tag))))
+    (let* ((tag (completing-read "Tag: " tags nil t))
+           (pos (gethash tag tag-lines)))
+      (goto-char pos)
+      (forward-line))))
+
+
 (setq cmd-shell-input-forms (make-hash-table :test 'equal))
 
 (let ((git-branches
@@ -87,7 +104,9 @@
                       "\n"))
           nil t)))
       (read-file (lambda ()
-                  (read-file-name "File: "))))
+                   (if (featurep 'ido)
+                       (ido-read-file-name "File: ")
+                     (read-file-name "File: ")))))
   (puthash "branch" git-branches cmd-shell-input-forms)
   (puthash "b" git-branches cmd-shell-input-forms)
   (puthash "file" read-file cmd-shell-input-forms)
@@ -103,5 +122,6 @@
 
 (define-key cmd-shell-mode-map (kbd "<return>") 'cmd-shell-return)
 (define-key cmd-shell-mode-map (kbd "<C-return>") 'cmd-shell-send-input)
+(define-key cmd-shell-mode-map (kbd "C-#") 'cmd-shell-goto-tag)
 
 (provide 'cmd-shell)
