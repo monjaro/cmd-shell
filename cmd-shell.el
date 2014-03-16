@@ -85,11 +85,13 @@
           (delete "" (split-string
                       (shell-command-to-string "git branch | sed 's/^[* ] //'")
                       "\n"))
-          nil t))))
+          nil t)))
+      (ido-read (lambda ()
+                  (ido-read-file-name "File: "))))
   (puthash "branch" git-branches cmd-shell-input-forms)
   (puthash "b" git-branches cmd-shell-input-forms)
-  (puthash "file" 'ido-find-file cmd-shell-input-forms)
-  (puthash "f" 'ido-find-file cmd-shell-input-forms))
+  (puthash "file" ido-read cmd-shell-input-forms)
+  (puthash "f" ido-read cmd-shell-input-forms))
 
 (define-derived-mode cmd-shell-mode text-mode "Cmd Shell"
   "Cmd shell mode
