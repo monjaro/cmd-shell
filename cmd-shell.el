@@ -51,7 +51,9 @@
       (mapcar (lambda (line)
                 (goto-char (point-max))
                 (insert line)
-                (comint-send-input)
+                (if (string= "term-mode" major-mode)
+                    (term-send-input)
+                  (comint-send-input))
                 (accept-process-output)) lines))))
 
 (defun cmd-shell-send-input ()
@@ -115,10 +117,8 @@
 (define-derived-mode cmd-shell-mode text-mode "Cmd Shell"
   "Cmd shell mode
 \\{cmd-shell-mode-map}"
-  (set (make-local-variable 'cmd-shell-shell-name) "*cmd-shell-shell*")
-  (save-window-excursion
-    (shell cmd-shell-shell-name))
-  (set (make-local-variable 'cmd-shell-shell) (get-buffer cmd-shell-shell-name)))
+  (set (make-local-variable 'cmd-shell-shell)
+       (if (featurep 'ido) (ido-read-buffer "Shell: ") (read-buffer "Shell: "))))
 
 (define-key cmd-shell-mode-map (kbd "<return>") 'cmd-shell-return)
 (define-key cmd-shell-mode-map (kbd "<C-return>") 'cmd-shell-send-input)
