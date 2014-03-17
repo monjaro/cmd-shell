@@ -63,22 +63,6 @@
     (if (not (string= cmd-str ""))
         (cmd-shell-send-lines cmd-str))))
 
-(defun cmd-shell-return ()
-  (interactive)
-  (if (not (eq (char-before) ?\\))
-      (cond ((eq (point) (point-max))
-             (progn
-               (cmd-shell-send-input)
-               (newline)))
-            ((and (eq (point) (- (point-max) 1))
-                  (eq (char-after) ?\n))
-             (progn
-               (cmd-shell-send-input)
-               (forward-line)))
-            (t (newline)))
-    (newline)))
-
-
 (defun cmd-shell-goto-tag ()
   (interactive)
   (let ((tags nil)
@@ -114,13 +98,17 @@
   (puthash "file" read-file cmd-shell-input-forms)
   (puthash "f" read-file cmd-shell-input-forms))
 
+(defun cmd-shell-set-shell ()
+  (interactive)
+  (setq cmd-shell-shell
+        (if (featurep 'ido) (ido-read-buffer "Shell: ") (read-buffer "Shell: "))))
+
 (define-derived-mode cmd-shell-mode text-mode "Cmd Shell"
   "Cmd shell mode
 \\{cmd-shell-mode-map}"
-  (set (make-local-variable 'cmd-shell-shell)
-       (if (featurep 'ido) (ido-read-buffer "Shell: ") (read-buffer "Shell: "))))
+  (make-local-variable 'cmd-shell-shell)
+  (cmd-shell-set-shell))
 
-(define-key cmd-shell-mode-map (kbd "<return>") 'cmd-shell-return)
 (define-key cmd-shell-mode-map (kbd "<C-return>") 'cmd-shell-send-input)
 (define-key cmd-shell-mode-map (kbd "C-#") 'cmd-shell-goto-tag)
 
