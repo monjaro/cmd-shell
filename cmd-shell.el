@@ -1,7 +1,8 @@
 (defun cmd-shell-prompt-input (type)
-  (funcall (gethash type cmd-shell-input-forms
-                    (lambda ()
-                      (read-from-minibuffer "Text input: ")))))
+  (let ((default-directory (with-current-buffer cmd-shell-shell default-directory)))
+    (funcall (gethash type cmd-shell-input-forms
+                      (lambda ()
+                        (read-from-minibuffer "Text input: "))))))
 
 (defun cmd-shell-prompt-create-input (cmd-str)
   ;; Use null string as escaped % for simplicity of implementation.
@@ -19,6 +20,12 @@
     (setq built-str (concat built-str (substring cmd-str start)))
     (replace-regexp-in-string "\0" "%" built-str)))
 
+(defun cmd-shell-goto-end-of-cmd ()
+  (end-of-line)
+  (while (and (eq (char-before) ?\\) (not (eq (point) (point-max))))
+    (forward-line)
+    (end-of-line)))
+
 (defun cmd-shell-fetch-current-cmd ()
   (interactive)
   (save-excursion
@@ -27,10 +34,7 @@
           beginning-of-cmd)
 
       ;; Find end of cmd.
-      (end-of-line)
-      (while (and (eq (char-before) ?\\) (not (eq (point) (point-max))))
-        (forward-line)
-        (end-of-line))
+      (cmd-shell-goto-end-of-cmd)
       (setq end-of-cmd (point))
 
       (goto-char old-point)
@@ -58,10 +62,18 @@
 
 (defun cmd-shell-send-input ()
   (interactive)
-  (let ((cmd-str (cmd-shell-prompt-create-input (cmd-shell-fetch-current-cmd)))
-        (process (get-buffer-process cmd-shell-shell)))
+  (let ((cmd-str (cmd-shell-prompt-create-input (cmd-shell-fetch-current-cmd))))
     (if (not (string= cmd-str ""))
         (cmd-shell-send-lines cmd-str))))
+
+(defun cmd-shell-create-input ()
+  (interactive)
+  (let ((cmd-str (cmd-shell-prompt-create-input (cmd-shell-fetch-current-cmd))))
+    (cmd-shell-goto-end-of-cmd)
+    (newline)
+    (newline)
+    (insert cmd-str)
+    (save-excursion (newline))))
 
 (defun cmd-shell-goto-tag ()
   (interactive)
@@ -100,8 +112,15 @@
 
 (defun cmd-shell-set-shell ()
   (interactive)
-  (setq cmd-shell-shell
-        (if (featurep 'ido) (ido-read-buffer "Shell: ") (read-buffer "Shell: "))))
+  (let* ((buffers (buffer-list))
+         (shells (delq nil (mapcar (lambda (buf)
+                                     (with-current-buffer buf
+                                       (and
+                                        (or (string= "term-mode" major-mode)
+                                            (string= "shell-mode" major-mode))
+                                        (buffer-name)))) buffers))))
+    (setq cmd-shell-shell
+          (completing-read "Shell: " shells nil t))))
 
 (define-derived-mode cmd-shell-mode text-mode "Cmd Shell"
   "Cmd shell mode
@@ -110,6 +129,8 @@
   (cmd-shell-set-shell))
 
 (define-key cmd-shell-mode-map (kbd "<C-return>") 'cmd-shell-send-input)
+(define-key cmd-shell-mode-map (kbd "<C-S-return>") 'cmd-shell-create-input)
 (define-key cmd-shell-mode-map (kbd "C-#") 'cmd-shell-goto-tag)
+(define-key cmd-shell-mode-map (kbd "C-$") 'cmd-shell-set-shell)
 
 (provide 'cmd-shell)
